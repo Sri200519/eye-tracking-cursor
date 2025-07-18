@@ -1,0 +1,9 @@
+deploy.prototxt
+eye_transformer_model.pt
+calibration_data.json
+test
+files
+__pycache__
+profiles/*
+!profiles/.gitkeep
+*_env
