@@ -8,18 +8,17 @@ import torch.optim as optim
 import mediapipe as mp
 import pyautogui
 import os
-import shutil # Import shutil for directory deletion
+import shutil 
 
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox, QGraphicsDropShadowEffect,
     QSizePolicy, QSpacerItem, QStackedWidget, QInputDialog, QMessageBox,
-    QLineEdit, QProgressBar, QScrollArea, QListWidget, QListWidgetItem # New imports for profile management
+    QLineEdit, QProgressBar, QScrollArea, QListWidget, QListWidgetItem 
 )
 from PyQt5.QtCore import Qt, QSize, QTimer, QPoint, QRect, pyqtSignal
 from PyQt5.QtGui import QFont, QColor, QPalette, QPixmap, QImage, QMouseEvent, QCursor
 
-# Import modules from our separate files
 from eye_tracker_models import EyeTransformer, KalmanFilter2D
 from eye_tracker_utils import (
     get_eye_bbox, crop_and_preprocess_eye, generate_grid,
@@ -27,9 +26,7 @@ from eye_tracker_utils import (
     find_working_camera, LEFT_EYE_EAR_IDXS, RIGHT_EYE_EAR_IDXS
 )
 
-# Global variable to pass data from GUI to main tracking loop (will be updated by GUI signal)
 CALIBRATION_COMPLETE_DATA = None
-# Global flag to signal main.py to start/stop tracking
 TRACKING_ACTIVE = False # Managed by main.py based on GUI signals
 
 class RaycastEyeTrackerApp(QWidget):
@@ -131,7 +128,7 @@ class RaycastEyeTrackerApp(QWidget):
                 event.accept()
             else:
                 super().mousePressEvent(event)
-        else: # Window is Maximized
+        else: 
             if event.button() == Qt.LeftButton and event.pos().y() <= self._title_bar_height:
                  self.showNormal()
                  self.move(event.globalPos() - self.rect().center())
@@ -224,18 +221,18 @@ class RaycastEyeTrackerApp(QWidget):
         if self.calibration_video_timer.isActive():
             self.calibration_video_timer.stop()
         
-        # Start the video feed for the welcome screen (uses video_label_setup_mode)
+        # Start the video feed for the welcome screen
         if self.cap and self.cap.isOpened():
             self.setup_video_timer.start(30)
             self.welcome_status_label.setText("Choose a profile or create a new one to begin.")
             self.create_profile_btn.setEnabled(True)
             self.load_profile_btn.setEnabled(True)
-            self.manage_profiles_btn.setEnabled(True) # Enable manage button
+            self.manage_profiles_btn.setEnabled(True)
         else:
             self.welcome_status_label.setText(f"Camera at index {self.cam_index} not found. Please check connection.\nCannot create or load profiles without camera.")
             self.create_profile_btn.setEnabled(False)
             self.load_profile_btn.setEnabled(False)
-            self.manage_profiles_btn.setEnabled(False) # Disable manage button
+            self.manage_profiles_btn.setEnabled(False)
 
 
     def _show_setup_mode(self):
@@ -248,14 +245,12 @@ class RaycastEyeTrackerApp(QWidget):
         if self.cap and self.cap.isOpened() and not self.setup_video_timer.isActive():
             self.setup_video_timer.start(30)
         
-        # Update status label with current profile name
         self.status_label_setup_mode.setText(
             f"Profile: {self.profile_name if self.profile_name else '[None Selected]'}\n"
             "Please do calibration in FULL SCREEN mode for best accuracy.\n"
             "Press 'Start Calibration' to begin."
         )
 
-        # Enable start calibration button only if camera is open
         self.start_calib_btn.setEnabled(self.cap and self.cap.isOpened())
 
 
@@ -307,7 +302,7 @@ class RaycastEyeTrackerApp(QWidget):
         self.finish_setup_btn.setText("Go Back")
         self.finish_setup_btn.clicked.disconnect()
         self.finish_setup_btn.clicked.connect(self._show_welcome_screen)
-        self.save_mappings_btn.hide() # Hide save mappings for new profile until a change is made.
+        self.save_mappings_btn.hide()
 
 
     def _on_load_profile(self):
@@ -362,7 +357,7 @@ class RaycastEyeTrackerApp(QWidget):
             self.finish_setup_btn.setText("Start Tracking")
             self.finish_setup_btn.clicked.disconnect()
             self.finish_setup_btn.clicked.connect(self._start_tracking_from_setup)
-            self.save_mappings_btn.show() # Show save mappings button
+            self.save_mappings_btn.show() 
 
         except FileNotFoundError:
             QMessageBox.critical(self, "Load Error", "Profile data (model.pt or calibration.json) not found for this profile. It might be incomplete.")
@@ -410,7 +405,7 @@ class RaycastEyeTrackerApp(QWidget):
     def _on_manage_profiles(self):
         """Switches to the profile management screen."""
         self.stacked_widget.setCurrentWidget(self.profile_management_screen)
-        self._populate_profile_list() # Populate list each time it's shown
+        self._populate_profile_list() 
 
 
     def _populate_profile_list(self):
@@ -423,18 +418,18 @@ class RaycastEyeTrackerApp(QWidget):
         
         if not available_profiles:
             item = QListWidgetItem("No profiles found.")
-            item.setFlags(item.flags() & ~Qt.ItemIsSelectable) # Make non-selectable
+            item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
             self.profile_list_widget.addItem(item)
             self.delete_selected_profile_btn.setEnabled(False) # Disable delete button
             return
 
         for profile_dir_name in available_profiles:
-            item_text = profile_dir_name.replace('_', ' ').title() # Convert dir name back to readable
+            item_text = profile_dir_name.replace('_', ' ').title() 
             item = QListWidgetItem(item_text)
-            item.setData(Qt.UserRole, profile_dir_name) # Store actual directory name in UserRole
+            item.setData(Qt.UserRole, profile_dir_name) 
             self.profile_list_widget.addItem(item)
         
-        self.delete_selected_profile_btn.setEnabled(False) # Disable initially, enable on selection
+        self.delete_selected_profile_btn.setEnabled(False) 
 
     def _on_profile_list_selection_changed(self):
         """Enables delete button when a profile is selected."""
@@ -482,7 +477,6 @@ class RaycastEyeTrackerApp(QWidget):
              QMessageBox.critical(self, "Camera Not Ready", "Camera is not open. Please ensure your camera is connected and working before starting tracking.")
              return
 
-        # Stop setup video timer
         if self.setup_video_timer.isActive():
             self.setup_video_timer.stop()
 
@@ -520,7 +514,6 @@ class RaycastEyeTrackerApp(QWidget):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        # Window controls are directly in main_layout, always visible
         window_controls_container = QWidget()
         window_controls_container.setObjectName("windowControlsContainer")
         window_controls_layout = QHBoxLayout(window_controls_container)
@@ -550,7 +543,6 @@ class RaycastEyeTrackerApp(QWidget):
         self.main_layout.addWidget(window_controls_container, alignment=Qt.AlignLeft | Qt.AlignTop)
 
 
-        # QStackedWidget to manage different views (Welcome, Setup, Calibration, Profile Management)
         self.stacked_widget = QStackedWidget(self)
         self.main_layout.addWidget(self.stacked_widget)
         self.main_layout.setStretchFactor(self.stacked_widget, 1)
@@ -592,7 +584,6 @@ class RaycastEyeTrackerApp(QWidget):
         button_container_layout.addStretch(1)
         welcome_layout.addLayout(button_container_layout)
         
-        # NEW: Manage Profiles button
         manage_profiles_button_layout = QHBoxLayout()
         manage_profiles_button_layout.addStretch(1)
         self.manage_profiles_btn = QPushButton("Manage Profiles")
@@ -657,7 +648,6 @@ class RaycastEyeTrackerApp(QWidget):
             action_combobox.addItems(click_options)
             action_combobox.setObjectName("actionCombobox")
             self.gesture_comboboxes[gesture] = action_combobox
-            # Default values are set in _on_create_new_profile or loaded in _on_load_profile
             row_layout.addWidget(action_combobox)
             mapping_grid_layout.addLayout(row_layout)
 
@@ -680,11 +670,10 @@ class RaycastEyeTrackerApp(QWidget):
         self.finish_setup_btn.clicked.connect(self._show_welcome_screen)
         setup_button_layout.addWidget(self.finish_setup_btn)
 
-        # NEW: Save Mappings button
         self.save_mappings_btn = QPushButton("Save Mappings")
         self.save_mappings_btn.setObjectName("controlButton")
         self.save_mappings_btn.clicked.connect(self._on_save_mappings)
-        self.save_mappings_btn.hide() # Initially hidden, shown when loaded profile
+        self.save_mappings_btn.hide()
         setup_button_layout.addWidget(self.save_mappings_btn)
 
 
@@ -703,7 +692,7 @@ class RaycastEyeTrackerApp(QWidget):
         profile_manage_layout.setSpacing(20)
 
         profile_manage_header = QLabel("Manage Profiles")
-        profile_manage_header.setObjectName("welcomeHeader") # Reuse style
+        profile_manage_header.setObjectName("welcomeHeader")
         profile_manage_header.setAlignment(Qt.AlignCenter)
         profile_manage_layout.addWidget(profile_manage_header)
 
@@ -717,7 +706,7 @@ class RaycastEyeTrackerApp(QWidget):
         profile_manage_buttons_layout.addStretch(1)
 
         self.delete_selected_profile_btn = QPushButton("Delete Selected Profile")
-        self.delete_selected_profile_btn.setObjectName("stopButton") # Use red delete style
+        self.delete_selected_profile_btn.setObjectName("stopButton")
         self.delete_selected_profile_btn.setEnabled(False)
         self.delete_selected_profile_btn.clicked.connect(self._on_delete_selected_profile)
         profile_manage_buttons_layout.addWidget(self.delete_selected_profile_btn)
@@ -783,7 +772,6 @@ class RaycastEyeTrackerApp(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # Position overlays only if current widget is calibration_view
         if self.stacked_widget.currentWidget() == self.calibration_view:
             current_width = self.calibration_view.width()
             current_height = self.calibration_view.height()
@@ -806,7 +794,7 @@ class RaycastEyeTrackerApp(QWidget):
 
             status_label_width = 600
             status_label_height = 80
-            y_offset_for_top_controls = self._title_bar_height + 10 # Some space below window controls
+            y_offset_for_top_controls = self._title_bar_height + 10
             self.calibration_status_overlay.setGeometry(
                 (current_width - status_label_width) // 2,
                 y_offset_for_top_controls,
@@ -823,11 +811,8 @@ class RaycastEyeTrackerApp(QWidget):
             )
             self.training_progress_bar.raise_()
         
-        # Also, ensure the profile list widget resizes correctly within its scroll area if it's visible
         elif self.stacked_widget.currentWidget() == self.profile_management_screen:
-            # The layout of profile_management_screen should handle its widgets,
-            # but ensure the list widget takes available space.
-            pass # No specific overlay geometry to set here, layout managers handle it
+            pass 
 
 
     def apply_stylesheet(self):
@@ -1133,7 +1118,7 @@ class RaycastEyeTrackerApp(QWidget):
                 self.stop_btn_overlay.hide()
                 self.calibration_status_overlay.setText("Calibration data collected. Click 'Finish & Start Tracking'.")
                 self.calibration_video_timer.stop()
-                self.cap.release() # Release camera after calibration data is collected
+                self.cap.release()
                 
         else:
             self.calibration_status_overlay.setText("Face not detected. Adjust camera or your position and try again.")
@@ -1216,13 +1201,11 @@ class RaycastEyeTrackerApp(QWidget):
         self.setFixedSize(self.original_window_size)
         self.setCursor(Qt.ArrowCursor)
 
-        self.calibration_video_timer.stop() # Calibration video stops here
+        self.calibration_video_timer.stop()
 
-        # Switch back to setup mode GUI for preview
         self._show_setup_mode()
         self.status_label_setup_mode.setText(f"Profile: {self.profile_name}\nCalibration and Training Complete.\nReady for Tracking!")
         
-        # Change setup buttons for tracking mode
         self.start_calib_btn.setText("Start Tracking")
         self.start_calib_btn.clicked.disconnect()
         self.start_calib_btn.clicked.connect(self._start_tracking_from_setup)
@@ -1231,13 +1214,12 @@ class RaycastEyeTrackerApp(QWidget):
         self.finish_setup_btn.clicked.disconnect()
         self.finish_setup_btn.clicked.connect(self._show_welcome_screen)
 
-        self.save_mappings_btn.show() # Show save mappings button after calibration if it's not already shown
+        self.save_mappings_btn.show()
 
         # --- Auto-minimize the application ---
         self.showMinimized()
 
-        # Emit signal to main loop to start tracking
-        global CALIBRATION_COMPLETE_DATA # Update global data
+        global CALIBRATION_COMPLETE_DATA
         CALIBRATION_COMPLETE_DATA = {
             "gesture_click_map": self.gesture_comboboxes_to_map(),
             "x_min_calib": self.x_min_calib,
@@ -1261,7 +1243,6 @@ class RaycastEyeTrackerApp(QWidget):
         if self.cap and self.cap.isOpened():
             self.cap.release()
         
-        # Signal main loop to stop tracking if active
         global TRACKING_ACTIVE
         if TRACKING_ACTIVE:
             self.stopTrackingSignal.emit()

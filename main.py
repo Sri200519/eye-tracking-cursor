@@ -9,38 +9,33 @@ import pyautogui
 import mediapipe as mp
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QFont, QColor, QPalette
-from PyQt5.QtCore import QObject, pyqtSignal, QThread # ADDED: Import QObject, pyqtSignal, QThread
+from PyQt5.QtCore import QObject, pyqtSignal, QThread 
 
-# For dummy arrow icon generation
 from PIL import Image, ImageDraw
 
 
-# Import modules from our separate files
-from raycast_eye_tracker_app import RaycastEyeTrackerApp, CALIBRATION_COMPLETE_DATA, TRACKING_ACTIVE
+from gui_eye_tracker_app import RaycastEyeTrackerApp, CALIBRATION_COMPLETE_DATA, TRACKING_ACTIVE
 from eye_tracker_models import KalmanFilter2D, EyeTransformer
 from eye_tracker_utils import (
     get_eye_bbox, crop_and_preprocess_eye, is_face_stable, eye_aspect_ratio,
     find_working_camera, LEFT_EYE_EAR_IDXS, RIGHT_EYE_EAR_IDXS
 )
 
-# Global variables for tracking state and data (managed by GUI signals)
 _current_tracking_data = None
 
 
-# Refactored Tracking Logic into a QObject Worker for threading
 class TrackingWorker(QObject):
     finished = pyqtSignal()
     
     def __init__(self, data):
         super().__init__()
         self.tracking_data = data
-        self._is_running = True # Control flag for the loop
+        self._is_running = True 
 
     def run(self):
         """This method contains the main real-time tracking loop."""
         print("TrackingWorker: Starting background tracking loop.")
         
-        # Unpack tracking data
         tracking_data = self.tracking_data
         gesture_click_map = tracking_data["gesture_click_map"]
         x_min_calib = tracking_data["x_min_calib"]
@@ -70,12 +65,12 @@ class TrackingWorker(QObject):
             print(f"TrackingWorker Error: Error loading model: {e}. Cannot start tracking.")
             self._is_running = False
 
-        if not self._is_running: # Exit if model loading failed
+        if not self._is_running: 
             self.finished.emit()
             return
 
         model.eval()
-        cap = cv2.VideoCapture(cam_index) # 'cap' is now local to this method
+        cap = cv2.VideoCapture(cam_index) 
         if not cap.isOpened():
             print(f"TrackingWorker Error: Could not open camera at index {cam_index}.")
             self._is_running = False
@@ -101,7 +96,7 @@ class TrackingWorker(QObject):
         print("TrackingWorker: Real-time loop in background. Press 'q' on OpenCV window or use GUI to quit.")
 
         while self._is_running: # Loop based on internal flag
-            ret, frame = cap.read() # 'frame' is local
+            ret, frame = cap.read()
             if not ret:
                 print("TrackingWorker: Failed to grab frame. Exiting tracking loop.")
                 break
@@ -201,21 +196,19 @@ class TrackingWorker(QObject):
             cv2.imshow("Eye Tracker", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 print("TrackingWorker: 'q' pressed on OpenCV window. Stopping tracking.")
-                self._is_running = False # Signal to stop loop
+                self._is_running = False 
                 break
             
-            # Small delay to prevent 100% CPU usage if frames are very fast
             time.sleep(0.001)
 
-            # Check if an external stop signal was received
-            if not TRACKING_ACTIVE: # Check the global flag
+            if not TRACKING_ACTIVE: 
                 print("TrackingWorker: Received external stop signal.")
                 self._is_running = False
 
         cap.release()
         cv2.destroyAllWindows()
         print("TrackingWorker: Background tracking finished and resources released.")
-        self.finished.emit() # Signal that the worker has finished
+        self.finished.emit() 
 
     def stop(self):
         """Method to externally stop the tracking worker."""
@@ -251,12 +244,12 @@ def _stop_tracking_handler():
     """Stops the real-time tracking thread."""
     global _tracking_worker, _tracking_thread, TRACKING_ACTIVE
     if _tracking_worker:
-        _tracking_worker.stop() # Tell the worker to stop its loop
-    TRACKING_ACTIVE = False # Update global flag
+        _tracking_worker.stop() 
+    TRACKING_ACTIVE = False 
     if _tracking_thread and _tracking_thread.isRunning():
         print("Main: Requesting tracking thread to terminate...")
         _tracking_thread.quit()
-        _tracking_thread.wait(2000) # Wait up to 2 seconds for it to finish gracefully
+        _tracking_thread.wait(2000) 
         if _tracking_thread.isRunning():
             print("Main: Warning: Tracking thread did not terminate gracefully. Terminating forcefully.")
             _tracking_thread.terminate() # Force terminate if it doesn't quit
@@ -267,7 +260,6 @@ def _stop_tracking_handler():
 
 
 if __name__ == "__main__":
-    # Create a dummy image for the QComboBox dropdown arrow if it doesn't exist.
     try:
         with open("arrow_down.png", "rb") as f:
             pass
@@ -302,11 +294,10 @@ if __name__ == "__main__":
     gui.stopTrackingSignal.connect(_stop_tracking_handler)
 
 
-    # Start the PyQt event loop. This blocks until the GUI window is explicitly closed.
+    # Start the PyQt event loop.
     sys.exit(app.exec_())
 
     # --- After GUI closes (only if GUI is completely exited, not minimized) ---
-    # Ensure any active tracking thread is stopped when the entire application exits
     if _tracking_thread and _tracking_thread.isRunning():
         print("\nMain: GUI closed. Stopping background tracking thread.")
         _stop_tracking_handler()
