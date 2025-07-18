@@ -1,5 +1,14 @@
 # Eye Tracking Cursor
 
+## Table of Contents
+- [Overview](#overview)
+- [How It Works](#how-it-works)
+- [Custom GUI & Logic](#custom-gui--logic)
+- [Current Status](#current-status)
+- [Running Locally](#running-locally)
+- [Development](#development)
+- [Roadmap & Future Recommendations](#roadmap--future-recommendations)
+
 ## Overview
 This project enables hands-free control of your computer cursor using only your eyes. It leverages computer vision and deep learning to track your gaze via webcam and move the mouse pointer accordingly. The system is designed for real-time performance and accuracy, using a combination of PyQt5 for the GUI, MediaPipe for facial landmark detection, and custom neural models for gaze estimation.
 
@@ -9,6 +18,67 @@ This project enables hands-free control of your computer cursor using only your 
 - **Cursor Control:** The predicted gaze coordinates are mapped to your screen using PyAutoGUI, enabling cursor movement.
 - **Calibration:** The app includes a calibration step to adapt to individual users and screen setups.
 - **Threaded Processing:** Real-time tracking runs in a background thread for smooth interaction.
+
+## Custom GUI & Logic
+
+The GUI is built with PyQt5 and provides a streamlined, fullscreen experience for calibration and gaze control. It features:
+- Frameless, resizable window with custom drag/resize/maximize logic
+- Profile management (create, load, manage)
+- Calibration workflow with live video and sample collection
+- Gesture mapping (blinks, holds to mouse actions)
+- State transitions and error handling
+
+See `gui_eye_tracker_app.py` for implementation details.
+
+## ML, Deep Learning & Filtering Logic
+
+The core of the system is a real-time gaze estimation pipeline combining classical computer vision, deep learning, and signal filtering:
+
+### 1. Preprocessing & Eye Extraction
+- **Face & Landmark Detection:** MediaPipe detects the user’s face and facial landmarks from the webcam stream.
+- **Eye Bounding Box:** Custom logic (`get_eye_bbox`) finds the bounding box for each eye using key landmark indices.
+- **Cropping & Enhancement:** The eye region is cropped, resized to 64x64, converted to grayscale, and enhanced using CLAHE for contrast (`crop_and_preprocess_eye`).
+
+### 2. Gaze Estimation Model
+- **CNN Backbone:** A custom convolutional network extracts features from the preprocessed eye images.
+- **Patch Embedding:** The CNN output is split into patches and embedded for transformer input.
+- **Transformer Encoder:** Several layers of self-attention (transformer encoder) model spatial relationships in the eye region, improving robustness to noise and variation.
+- **MLP Head:** The transformer output is decoded to predict normalized gaze coordinates (x, y) on the screen.
+- **Training:** The model is trained per-user using calibration data collected in the app (supervised regression).
+
+### 3. Filtering & Smoothing
+- **Kalman Filter:** A 2D Kalman filter (`KalmanFilter2D`) smooths the predicted gaze coordinates frame-to-frame, reducing jitter and noise for stable cursor movement.
+- **Face Stability Check:** The system uses a rolling buffer of iris positions to ensure the face is stable before capturing calibration samples or updating the cursor.
+
+### Pseudocode: Main GUI Logic
+```python
+# Pseudocode for main event flow
+if app starts:
+    show welcome/profile screen
+    if camera available:
+        enable profile actions
+    else:
+        show error
+
+if create profile:
+    validate name
+    create directory and model
+    switch to setup mode
+
+if start calibration:
+    show calibration grid
+    collect samples for each point
+    show progress
+    save calibration data
+
+if drag/resize window:
+    update window geometry based on mouse events
+```
+
+**For more details, see:**
+- `gui_eye_tracker_app.py` (main GUI logic)
+- `main.py` (application entry point)
+- `eye_tracker_models.py`, `eye_tracker_utils.py` (core model/utils)
 
 ## Current Status
 - **Supported OS:** Only works on **macOS 15.5 (Sonoma) ARM64** (Apple Silicon) at this time.
